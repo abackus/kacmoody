@@ -45,6 +45,7 @@ def rm(self,depth=5):
     self.multiplicities = {} # Could imagine checking if it is defined first, so as
                              # not to waste time calculating things that have
                              # already been calculated.
+                             # TODO Also if it's not a root, we don't need to induct!!
     D = self.symmetrized_matrix().dense_matrix()
 
     def c(beta):
@@ -59,8 +60,9 @@ def rm(self,depth=5):
     def c_to_root(coeff):
         #IT IS 0 INDEXED FOR INFINITE, 1 INDEXED FOR FINITE
         #THIS IS A BUG IN SAGE
-        #return sum([S[x+1]*coeff[x] for x in range(len(coeff))])#finite
-        return sum([S[int(x)]*int(coeff[x]) for x in range(len(coeff))])#finite
+        if 0 in S.keys():
+            return sum([S[int(x)]*int(coeff[x]) for x in range(len(coeff))])#finite
+        return sum([S[int(x+1)]*int(coeff[x]) for x in range(len(coeff))])#finite
 
     #Actually, it is SO much easier to induct on height...
     all_combs = []
@@ -115,18 +117,23 @@ def CartanMatrixGenerator(dim):
         matrix.append(row) # Construct the trivial Cartan matrix 2I
     yield CartanMatrix(matrix)
 
+    #TODO make this work in the nontrivial cases
+    # But we're just doing this for 2x2 symmetric matrices for now
     while true:
-        for i in range(dim):
-            for j in range(dim):
-                if (i != j): #Don't replace 2
-                    matrix[i][j] = matrix[i][j] - 1
-                    if (matrix[j][i] == 0):
-                        matrix[j][i] = -1
-                    yield CartanMatrix(matrix)
+        matrix[0][1] = matrix[0][1] - 1
+        matrix[1][0] = matrix[1][0] - 1
+        yield CartanMatrix(matrix)
+
 
 def numerology(dim, count, dep):
     # Computes root multiplicities for dimension dim with depth dep, until count Kac-Moody algebras have been studied.
-    with open('data.txt', 'w') as file:
+    with open('data.csv', 'a') as file:
         gen = CartanMatrixGenerator(dim)
         for i in range(count):
-            file.write(next(gen).rm(depth=dep)) #TODO debug
+            kacmoody = next(gen)
+            roots = kacmoody.rm(depth=dep)
+            file.write(str(kacmoody) + "\n") #TODO debug
+            for root in roots:
+                if roots[root] > 0:
+                    file.write("   " + str(root) + ", " + str(int(roots[root])) + "\n")
+            file.write("\n\n")

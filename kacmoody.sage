@@ -100,3 +100,33 @@ def rm(self,depth=5):
     return self.multiplicities
 
 CartanMatrix.rm = rm
+
+def CartanMatrixGenerator(dim):
+    # Iterates over Cartan matrices of dimension dim
+    # TODO check: this is surjective
+    matrix = []
+    for i in range(dim):
+        row = []
+        for j in range(dim):
+            if i == j:
+                row.append(2)
+            else:
+                row.append(0)
+        matrix.append(row) # Construct the trivial Cartan matrix 2I
+    yield CartanMatrix(matrix)
+
+    while true:
+        for i in range(dim):
+            for j in range(dim):
+                if (i != j): #Don't replace 2
+                    matrix[i][j] = matrix[i][j] - 1
+                    if (matrix[j][i] == 0):
+                        matrix[j][i] = -1
+                    yield CartanMatrix(matrix)
+
+def numerology(dim, count, dep):
+    # Computes root multiplicities for dimension dim with depth dep, until count Kac-Moody algebras have been studied.
+    with open('data.txt', 'w') as file:
+        gen = CartanMatrixGenerator(dim)
+        for i in range(count):
+            file.write(next(gen).rm(depth=dep)) #TODO debug

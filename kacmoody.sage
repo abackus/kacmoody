@@ -116,7 +116,9 @@ def rm(self,depth=5):
             if a_o == 0 and b == 0:
                 self.multiplicities[r] = 0
                 continue
-            self.multiplicities[r] = a_o/b-c_o
+            self.multiplicities[r] = round(a_o/b-c_o)
+            # prevent float division by 0
+            # this could be avoided if we did arithmetic in Q
 
     # Clean the root lattice, removing zero entries and replacing floats with ints
     notRoots = [] # Can't change the size of a dict during iteration
@@ -160,10 +162,11 @@ def numerology(dim, count, dep):
             kacmoody = next(gen)
             if kacmoody.is_symmetrizable():
                 roots = kacmoody.rm(depth=dep)
-            file.write(str(kacmoody) + "\n") #TODO debug
-            for root in roots:
-                try:
-                    file.write(str(root) + ", " + str(roots[root]) + "\n")
-                except ZeroDivisionError as (errno, errstr):
-                    print "ZeroDivisionError({0}): {1}".format(errno, strerror)
-            file.write("\n\n")
+                file.write(str(kacmoody) + "\n")
+                print(str(kacmoody) + "\n")
+                for root in roots:
+                    try:
+                        file.write(str(root) + ", " + str(roots[root]) + "\n")
+                    except ZeroDivisionError as (errno, errstr):
+                        print "ZeroDivisionError({0}): {1}".format(errno, strerror)
+                file.write("\n\n")

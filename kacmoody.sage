@@ -100,7 +100,10 @@ def rm(self,depth=5):
         else:
             a_o = 0
             for bp in [c_to_root(l) for l in sub_parts(rd) if sum(l) != 0]:
-                # Sum over subroots. Could this be memoized?
+                # Sum over subroots. The number of subroots one has to sum
+                # over could be greatly reduced because the action of the
+                # Weyl group preserves multiplicities.
+                # TODO this
                 bpp = r-bp
                 bpd = bp.dense_coefficient_list()
                 bppd = bpp.dense_coefficient_list()
@@ -132,26 +135,35 @@ def rm(self,depth=5):
 
 CartanMatrix.rm = rm
 
+
+
 def CartanMatrixGenerator(dim):
     # Iterates over Cartan matrices of dimension dim
-    # TODO check: this is surjective
-    matrix = []
+    # Create 2I_dim
+    matrix = [[0 for i in range(dim)] for i in range(dim)]
     for i in range(dim):
-        row = []
-        for j in range(dim):
-            if i == j:
-                row.append(2)
-            else:
-                row.append(0)
-        matrix.append(row) # Construct the trivial Cartan matrix 2I
-    yield CartanMatrix(matrix)
-
-    #TODO make this work in the nontrivial cases
-    # But we're just doing this for 2x2 symmetric matrices for now
+        matrix[i][i] = 2
+    order = 0 # By "order" of I mean the sum of -a_{ij}, i \neq j
     while true:
-        matrix[0][1] = matrix[0][1] - 1
-        matrix[1][0] = matrix[1][0] - 1
-        yield CartanMatrix(matrix)
+        # It might not be necessary to check *every* matrix, by checking
+        # if a matrix is a direct sum. TODO this
+        order = order + 1
+        for vector in all_lists(dim * (dim - 1), order):
+            k = 0
+            for i in range(dim):
+                for j in range(dim):
+                    if i != j:
+                        matrix[i][j] = -vector[k]
+                        k = k + 1
+            symmetricZeroes = true
+            for i in range(dim):
+                for j in range(dim): # This could be optimized...
+                    if (matrix[i][j] == 0) and (matrix[j][i] != 0):
+                        symmetricZeroes = false
+            if symmetricZeroes:
+                yield CartanMatrix(matrix)
+                # Causes ImportError: cannot import name _distributor_init
+
 
 
 def numerology(dim, count, dep):

@@ -11,6 +11,9 @@ def sub_parts(c):
                    [1,1,0],
                    [0,2,0]]
     """
+    #TODO: Make it faster
+    # Maybe can use partition algorithms somehow?
+    # http://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html
     if len(c) == 1:
         return [[x] for x in range(c[0])]
 
@@ -23,12 +26,7 @@ def sub_parts(c):
 
 def common_divisors(l):
     # Returns the common divisors of a list l of integers >= 0.
-    l = [a for a in l if a != 0]
-    d = [set(e.divisors()) for e in l]
-    f = d[0]
-    for i in d[1:]:
-        f = f.intersection(i)
-    return f
+    return divisors(gcd(l))
 
 def all_lists(l,s):
     #return all lists with length l and sum s
@@ -38,6 +36,89 @@ def all_lists(l,s):
     for i in range(s+1):
         to_return = to_return + [[i]+x for x in all_lists(l-1,s-i)]
     return to_return
+
+def mult(self, height=10):
+    # TODO: This version is cleaner and faster, but has a BUG (can be verified using A3)
+    # It's probably just a silly arithmetic typo, I will fix ASAP!
+
+    # Returns the root multiplicities of a Cartan matrix self
+    # Recall that if beta is a root, then mult(beta) = mult(-beta)
+    # So we only have to check positive roots.
+
+    # Peterson's recurrence formula:
+    # For beta a positive root,
+    # B(beta, 2rho - beta)c_beta = sum_{alpha+gamma=beta} B(alpha, gamma)c_alphac_gamma
+    # where B is the Killing form, rho is the is the functional that sends the coroot
+    # hat alpha_i to a_ii/2, and c(beta) = sum_n mult(beta/n)/n.
+
+    self.multiplicities = {}
+    self.c = {}
+    self.c[tuple([0, 0, 0])] = 0
+    mat = self.symmetrized_matrix() # TODO: Does this need to be a dense_matrix?
+    dim = mat.nrows()
+
+    def two_rho(beta):
+        # The functional rho which appears in Peterson's recurrence formula
+        # TODO: This is probably a BUG if mat is not symmetric. Fix it.
+        return -2*sum(beta)
+
+    def B(a, b):
+        # The Killing form of mat
+        # TODO: This is probably a BUG if mat is not symmetric. Fix it.
+        return a * mat * b
+
+    # Initialize the dict of root multiplicities so we can start the induction.
+    for root in all_lists(dim, 1):
+        # Iterate over all positive simple roots of mat.
+        self.multiplicities[tuple(root)] = 1
+        self.c[tuple(root)] = 1
+
+    # Now do the inductive step.
+    for h in range(2, height + 1):
+        for root in all_lists(dim, h):
+            # Iterate over all positive elements of the root lattice of mat,
+            # with height ( = ell^1 norm) h >= 2.
+            RHS = 0 # Right-hand side of Peterson's recurrence formula
+            root = vector(root)
+
+            for subroot in sub_parts(list(root)):
+                # Sum over subroots
+                # TODO: We don't actually need to sum over the subroots because the
+                # action of the Weyl group preserves multiplicities, and hence c.
+                # So this could be greatly sped up.
+                subroot = vector(subroot)
+                if subroot == 0:
+                    continue
+                RHS = RHS + B(subroot, root - subroot)*self.c[tuple(subroot)]*self.c[tuple(root - subroot)]
+
+            # The factor which appears in the left-hand side of Peterson's recurrence formula
+            # TODO: This is probably a BUG if mat is not symmetric. Fix it.
+            LHSFactor = B(root, root) + two_rho(root)
+            if RHS == 0 and LHSFactor == 0:
+                # Not a root
+                self.multiplicities[tuple(root)] = 0
+                self.c[tuple(root)] = 0
+                continue
+
+            # Compute c(root) - m(root)
+            cRoot = 0
+            for n in divisors(gcd(root)):
+                if n != 1:
+                    cRoot = cRoot + self.multiplicities[tuple(root/n)]/n
+                    # TODO: Unsure if these vector-list castings are really necessary. I'm sleepy rn.
+
+            self.multiplicities[tuple(root)] = RHS/LHSFactor - cRoot
+            self.c[tuple(root)] = RHS/LHSFactor
+
+    # Clean the root lattice, removing zero entries and replacing floats with ints
+    notRoots = [] # Can't change the size of a dict during iteration
+    for r in self.multiplicities:
+        if self.multiplicities[r] == 0:
+            notRoots.append(r)
+    for r in notRoots:
+        self.multiplicities.pop(r)
+    return self.multiplicities
+    return self.multiplicities
 
 
 
@@ -58,7 +139,7 @@ def rm(self,depth=5):
     # For beta a positive root,
     # B(beta, 2rho - beta)c_beta = sum_{alpha+gamma=beta} B(alpha, gamma)c_alphac_gamma
     # where B is the Killing form, rho is the is the functional that sends the coroot
-    # hat alpha_i to a_ii/2, and c_beta = sum_n mult(beta/n)/n.
+    # hat alpha_i to a_ii/2, and c(beta) = sum_n mult(beta/n)/n.
 
     def c(beta):
         if beta in cMemo:
@@ -95,7 +176,7 @@ def rm(self,depth=5):
 
     for r in roots:
         rd = r.dense_coefficient_list()
-        if sum(rd) == 1: # If r is a trivial root
+        if sum(rd) == 1: # If r is a simple root
             self.multiplicities[r] = 1
         else:
             a_o = 0
@@ -134,6 +215,7 @@ def rm(self,depth=5):
     return self.multiplicities
 
 CartanMatrix.rm = rm
+CartanMatrix.mult = mult
 
 
 
@@ -162,7 +244,6 @@ def CartanMatrixGenerator(dim):
                         symmetricZeroes = false
             if symmetricZeroes:
                 yield CartanMatrix(matrix)
-                # Causes ImportError: cannot import name _distributor_init
 
 
 

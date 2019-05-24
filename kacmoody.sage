@@ -14,6 +14,12 @@ def sub_parts(c):
     #TODO: It might be possible to make this faster with memoization -- but
     # not much faster, since the set of subparts is *very large*.
     # Better to just use the Weyl group tbh.
+    
+    #Josh : Yeah I think the function as described runs pretty much as quick as it can
+    #I tested a variant; which fits into one-line:
+    #    return [list(y) for y in cartesian_product([range(x+1) for x in c])][:-1]  #< I kinda like this one-liner...
+    #but it is slower by a factor of ~3. Which is a shame.
+    
     if len(c) == 1:
         return [[x] for x in range(c[0])]
 

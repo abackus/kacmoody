@@ -1,7 +1,5 @@
 # Example of use:
 # CartanMatrix([[2,-3],[-3,2]]).rm(height=25)
-
-
 def sub_parts(c):
     """
     For a list c = [1,2,0], return
@@ -37,68 +35,84 @@ def all_lists(l,s):
         to_return = to_return + [[i]+x for x in all_lists(l-1,s-i)]
     return to_return
 
-def rm(self, height=10):
-    # Returns the root multiplicities of a Cartan matrix self
-    # Recall that if beta is a root, then mult(beta) = mult(-beta)
-    # So we only have to check positive roots.
+def rm(self,height=10):
+    """
+    Generates a root multiplicity table for the fundamental chamber of a kac-moody algebra up to
+    a certain height.
 
-    # Peterson's recurrence formula:
-    # For beta a positive root,
-    # B(beta, 2rho - beta)c_beta = sum_{alpha+gamma=beta} B(alpha, gamma)c_alphac_gamma
-    # where B is the Killing form, rho is the is the functional that sends the coroot
-    # hat alpha_i to a_ii/2, and c(beta) = sum_n mult(beta/n)/n.
-
-    self.multiplicities = {}
-    self.c = {}
-    self.c[tuple([0, 0, 0])] = 0
-    mat = self.symmetrized_matrix() # TODO: This is probably a BUG if mat is not symmetric. Fix it.
+    Assume symmetric for now.
+    """
+    self.multiplicities = {tuple([0,0,0]) : 0}
+    self.c = {tuple([0,0,0]) : 0}
+    self.fund_mult = {} #multiplicities in the fundamental chamber
+    mat = self.symmetrized_matrix()
     dim = mat.nrows()
+    simples = all_lists(dim,1)
 
     def two_rho(beta):
-        # The functional rho which appears in Peterson's recurrence formula
-        # TODO: This is probably a BUG if mat is not symmetric. Fix it.
         return -2*sum(beta)
+    def B(a,b):
+        return a*mat*b
+    def is_fund(r):
+        #checks if r is in the fundamental chamber
+        for s in simples:
+            if B(vector(r),vector(s)) > 0:
+                return 0
+        return 1
+    def weyl(r,s):
+        #for a root r and a simple s; ping pong r by s
+        rv = vector(r); sv = vector(s)
+        return tuple(rv - B(rv,sv)*sv)
 
-    def B(a, b):
-        # The Killing form of mat
-        # TODO: This is probably a BUG if mat is not symmetric. Fix it.
-        return a * mat * b
 
-    # Initialize the dict of root multiplicities so we can start the induction.
-    for root in all_lists(dim, 1):
-        # Iterate over all positive simple roots of mat.
+    for root in simples:
         self.multiplicities[tuple(root)] = 1
         self.c[tuple(root)] = 1
+    #Let's ping pong right now to see whats up with the homies
+    to_pingpong = [root for root in simples]
+    seen = [root for root in simples]
+    while len(to_pingpong) != 0:
+        #print(root,to_pingpong)
+        el = to_pingpong.pop()
+        ponged = [p for p in [weyl(el,s) for s in simples] if sum(p) <= height and p not in seen]
+        for p in ponged:
+            for q in p:
+                tb = 0
+                if q < 0:
+                    tb = 1; break
+            if tb == 1:
+                break
+            seen.append(p)
+            self.multiplicities[tuple(p)] = 1
+            self.c[tuple(p)] = 1
+            to_pingpong.append(p)
 
-    # Now do the inductive step.
-    # TODO: Get rid of all these tuple casts
-    for h in range(2, height + 1):
-        for root in all_lists(dim, h):
-            # Iterate over all positive elements of the root lattice of mat,
-            # with height ( = ell^1 norm) h >= 2.
+    for h in range(2,height+1):
+        for root in all_lists(dim,h):
+
+            #check if we already know the mult
+            if tuple(root) in self.multiplicities:
+                #we already found this; this is a weyl reflection of something else
+                #print(self.multiplicities)
+                self.c[tuple(root)] = sum([self.multiplicities[tuple(vector(root)/n)]/n for n in divisors(gcd(root))])
+                #self.multiplicities[tuple(root)] = m
+                if is_fund(root):
+                    self.fund_mult[tuple(root)] = self.multiplicities[tuple(root)]
+                continue
+
+            if B(vector(root),vector(root)) > 0:
+                self.multiplicities[tuple(root)] = 0
+                self.c[tuple(root)] = sum([self.multiplicities[tuple(vector(root)/n)]/n for n in divisors(gcd(root))])
+                continue
+
+            #if we don't already know the c
             RHS = 0 # Right-hand side of Peterson's recurrence formula
             root = vector(root)
-            for subroot in sub_parts(list(root)):
-                # Sum over subroots
-                # TODO: We don't actually need to sum over the subroots because the
-                # action of the Weyl group preserves multiplicities, and hence c.
-                # So this could be greatly sped up.
+            for subroot in sub_parts(list(root))[1:]:
                 subroot = vector(subroot)
-                if subroot == 0:
-                    continue
-                #print('\t' + str(subroot))
-
                 RHS = RHS + B(subroot, root - subroot)*self.c[tuple(subroot)]*self.c[tuple(root - subroot)]
-
-            # The factor which appears in the left-hand side of Peterson's recurrence formula
-            # TODO: This is probably a BUG if mat is not symmetric. Fix it.
             LHSFactor = B(root, root) + two_rho(root)
-
-            # Compute c(root) - m(root)
-            cRoot = 0
-            for n in divisors(gcd(root)):
-                if n != 1:
-                    cRoot = cRoot + self.multiplicities[tuple(root/n)]/n
+            cRoot = sum([self.multiplicities[tuple(root/n)]/n for n in divisors(gcd(root))[1:]])
 
             if RHS == 0 and LHSFactor == 0:
                 # Not a root
@@ -108,16 +122,33 @@ def rm(self, height=10):
 
             self.multiplicities[tuple(root)] = RHS/LHSFactor - cRoot
             self.c[tuple(root)] = RHS/LHSFactor
+            #print(self.multiplicities[tuple(root)])
+            if is_fund(root):
+                #print('wow')
+                self.fund_mult[tuple(root)] = self.multiplicities[tuple(root)]
 
-    # Clean the root lattice, removing zero entries and replacing floats with ints
-    notRoots = [] # Can't change the size of a dict during iteration
-    for r in self.multiplicities:
-        if self.multiplicities[r] == 0:
-            notRoots.append(r)
-    for r in notRoots:
-        self.multiplicities.pop(r)
+            #Now, we need to ping pong the root outwards by the Weyl group up to the height we care about
+            to_pingpong = [root]
+            seen = [root]
+            while len(to_pingpong) != 0:
+                #print(root,to_pingpong)
+                el = to_pingpong.pop()
+                ponged = [p for p in [weyl(el,s) for s in simples] if sum(p) <= height and p not in seen]
+                for p in ponged:
+                    for q in p:
+                        tb = 0
+                        if q < 0:
+                            tb = 1; break
+                    if tb == 1:
+                        break
+                    seen.append(p)
+                    self.multiplicities[tuple(p)] = self.multiplicities[tuple(root)]
+                    self.c[tuple(p)] = self.c[tuple(root)]
+                    to_pingpong.append(p)
 
-    return self.multiplicities
+    G = [(x,-B(vector(x),vector(x)),self.fund_mult[x]) for x in sorted(self.fund_mult,key=lambda x : -B(vector(x),vector(x)))]
+    #print(G)
+    return G
 
 
 CartanMatrix.rm = rm
@@ -149,6 +180,56 @@ def CartanMatrixGenerator(dim):
                         symmetricZeroes = false
             if symmetricZeroes:
                 yield CartanMatrix(matrix)
+
+
+
+
+def print_two(H):
+    """
+    prints a bunch of data, H, into two tables just like Kac
+    """
+    buff = 5
+
+    #First, takes H and makes it into three list
+    h0 = [str(h[0]) for h in H]; m0 = max([len(x) for x in h0] + [4])
+    h1 = [str(h[1]/2) for h in H]; m1 = max([len(x) for x in h1] + [4])
+    h2 = [str(h[2]) for h in H]; m2 = max([len(x) for x in h2] + [4])
+
+    #Then, we can probably print a header
+    #|m0 buff|m1 buff|m2 buff|buff|m0 buff|m1 buff|m2 buff|
+    print('_'*(8+m0*2+m1*2+m2*2+buff*7))
+    print('|root'+' '*(m0-4+buff) + '|norm' + ' '*(m1-4+buff) + '|mult' + ' '*(m2-4+buff) +'|'+' '*buff + '|root'+' '*(m0-4+buff) + '|norm' + ' '*(m1-4+buff) + '|mult' + ' '*(m2-4+buff)+'|')
+    print('-'*(8+m0*2+m1*2+m2*2+buff*7))
+
+    m = ceil(len(H)/2)
+    for a in range(m):
+        a1='|'+h0[a]+' '*(m0-len(h0[a])+buff)+'|'+h1[a]+' '*(m1-len(h1[a])+buff)+'|'+h2[a]+' '*(m2-len(h2[a])+buff)+'|'
+        a2=' '*buff
+        a3='|'+h0[a+m]+' '*(m0-len(h0[a+m])+buff)+'|'+h1[a+m]+' '*(m1-len(h1[a+m])+buff)+'|'+h2[a+m]+' '*(m2-len(h2[a+m])+buff)+'|'
+        print(a1+a2+a3)
+    print('-'*(8+m0*2+m1*2+m2*2+buff*7))
+
+
+def exceptional(n):
+    # Returns the exceptional Cartan matrix E_n, for n >= 5
+    if n < 5:
+        raise ValueError("Matrix E_n only makes sense for n >= 5")
+    M = []
+    for i in range(n):
+        row = []
+        for j in range(n):
+            if i == j:
+                row.append(2)
+            elif (i == j + 1) or (j == i + 1):
+                row.append(-1)
+            elif ((i == n - 1) and (j == 2)) or ((j == n - 1) and (i == 2)):
+                row.append(-1)
+            else:
+                row.append(0)
+        M.append(row)
+    M[n-1][n-2] = 0
+    M[n-2][n-1] = 0
+    return CartanMatrix(M)
 
 
 

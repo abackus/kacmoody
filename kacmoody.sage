@@ -48,11 +48,11 @@ def rm(self,height=10):
 
     Assume symmetric for now.
     """
-    self.multiplicities = {tuple([0,0,0]) : 0}
-    self.c = {tuple([0,0,0]) : 0}
     self.fund_mult = {} #multiplicities in the fundamental chamber
     mat = self.symmetrized_matrix()
     dim = mat.nrows()
+    self.multiplicities = {tuple([0]*dim) : 0}
+    self.c = {tuple([0]*dim) : 0}
     simples = all_lists(dim,1)
 
     def two_rho(beta):

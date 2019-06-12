@@ -111,6 +111,5 @@ def real_roots(cartan,height):
         #[rroots.add(p) for p in qngd]
         for p in qngd:
             rroots.insert(p)
-        print(len(to_pingpong))
 
     return rroots

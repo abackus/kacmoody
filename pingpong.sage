@@ -27,6 +27,8 @@ class root():
         return "this root : " + str(self.list_form)
     def __repr__(self):
         return "this root : " + str(self.list_form)
+    def __eq__(left, right):
+    	return left.list_form == right.list_form
     def __le__(left,right):
         return all(l <= r for l, r in zip(left.list_form, right.list_form))
     def __lt__(left,right):
@@ -63,7 +65,9 @@ def weyl(mat,r,s):
     """
     Weyl action on the root r by the simple root s
     """
+ #   print('hi')
     rv = r.vector_form; sv = s.vector_form
+  #  print('bye')
     return root(rv - B(mat,rv, sv)*sv, r.multiplicity, r.c) #is it c?
 
 
@@ -107,8 +111,6 @@ def real_roots(cartan,height):
         #[rroots.add(p) for p in qngd]
         for p in qngd:
             rroots.insert(p)
-        print(rroots.countNodes(), ";", len(to_pingpong))
-        if rroots.countNodes() > 100:
-        	break
+        print(len(to_pingpong))
 
     return rroots

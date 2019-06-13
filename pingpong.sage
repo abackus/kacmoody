@@ -29,7 +29,9 @@ def insert_list(self, l):
 		self.insert(x)
 AVLTree.insert_list = insert_list
 
-
+"""
+OTHER AUXILIARY METHODS
+"""
 def prime_code(list_form):
 	"""
 	Encode a list of integers as an integer using a "Godel code"
@@ -41,14 +43,13 @@ def prime_code(list_form):
 		c *= P.unrank(i)^list_form[i]
 	return c
 
-
 class root(tuple):
     """
-    The class for roots of a Kac-Moody algebra. 
+    The class for roots of a Kac-Moody algebra.
     """
     #def __init__(self,list_form,multiplicity,c,subroots=None):
     def __init__(self, list_form):
-        self.list_form    = list_form
+        self.list_form    = list(list_form)
         self.vector_form  = vector(list_form)
         self.tuple_form   = tuple(list_form)
         self.coding       = prime_code(list_form)
@@ -71,28 +72,56 @@ class root(tuple):
     def set_c(self, mat, c):
     	mat.cs[self.coding] = c
     def c(self, mat):
-    	return mat.cs[self.coding]
+    	return mat.cs[self.coding] # REplace
+
+class RootedCartanMatrix(CartanMatrix):
+	"""
+	The class for CartanMatrices decorated with more information.
+	"""
+	def __init__(self, height=30):
+		super().__init__(self)
+		self.height = height
+		self.dim = self.nrows()
+		self.simple_roots = [root(tuple([int(a == b) for a in range(dim)])) for b in range(dim)]
+		self.roots = AVLTree()
+		self.zero = root(tuple([0] * self.dim))
+		for s in self.simple_roots:
+			s.set_multiplicity(self, 1)
+			s.set_c(self, 1)
+		self.pingpong(self.simple_roots) # Generate real roots
+
+	def B(self, a, b):
+		"""
+		Returns the bilinear product induced by self - does this work for nonsymmetric?
+		"""
+		return a * self * b
+
+	def weyl(self, r, s):
+		"""
+		Acts the Weyl group representation of the simple root s on the root r r
+		"""
+		return root(r.vector_form - self.B(r.vector_form, s.vector_form) * s.vector_form)
+
+	def pingpong(self, generators):
+		"""
+		Adjoin all the roots, that can be obtained
+		by acting the Weyl group on the generators.
+		"""
+		self.roots.insert_list(generators)
+		for g in generators:
+			to_pingpong = [g]
+			mult = g.multiplicity(self)
+			while len(to_pingpong) != 0:
+				next_root    = to_pingpong.pop()
+				ponged       = [weyl(self, next_root, s) for s in self.simple_roots]
+				qonged       = [p for p in ponged if p.height() <= self.height and not self.roots.search(p) and self.zero < p]
+				to_pingpong += qonged
+				for p in qonged:
+					p.set_multiplicity(self, mult)
+					self.roots.insert(p)
 
 
-"""
-Auxiliary functions for the Cartan Matrix
-"""
-
-def B(mat,a,b):
-    """
-    Returning the bilinear product induced by the Cartan Matrix
-    """
-    return a*mat*b # does this make sense for nonsymmetric?
- 
-def weyl(mat,r,s):
-    """
-    Weyl action on the root r by the simple root s
-    """
-    rv = r.vector_form; sv = s.vector_form
-    return root(rv - B(mat,rv, sv)*sv) #does this make sense for nonssymmetric?
-
-
-def exceptional(n):
+def exceptional(n, height=30):
     # Returns the exceptional Cartan matrix E_n, for n >= 5
     if n < 5:
         raise ValueError("Matrix E_n only makes sense for n >= 5")
@@ -111,44 +140,4 @@ def exceptional(n):
         M.append(row)
     M[n-1][n-2] = 0
     M[n-2][n-1] = 0
-    return CartanMatrix(M)
-
-CartanMatrix.simple_roots = []
-CartanMatrix.zero = root(tuple([]))
-CartanMatrix.roots = AVLTree()
-CartanMatrix.height = 100
-
-def setup(self, height=100):
-	"""
-	Must call this before pingponging!
-	Declares the max height that we want to pingpong to,
-	then declares the basis of simple roots,
-	the adjoins the real roots.
-	"""
-	self.height = height
-	self.simple_roots = [root(tuple([int(a == b) for a in range(self.nrows())])) for b in range(self.nrows())]
-	for s in self.simple_roots:
-		s.set_multiplicity(self, 1)
-		s.set_c(self, 1)
-	self.zero = root(tuple([0] * self.nrows()))
-	self.pingpong(self.simple_roots)
-CartanMatrix.setup = setup
-
-def pingpong(self, generators):
-	"""
-	Adjoin all the roots, that can be obtained
-	by acting the Weyl group on the generators.
-	"""
-	self.roots.insert_list(generators)
-	for g in generators:
-		to_pingpong = [g]
-		mult = g.multiplicity(self)
-		while len(to_pingpong) != 0:
-			next_root    = to_pingpong.pop()
-			ponged       = [weyl(self, next_root, s) for s in self.simple_roots]
-			qonged       = [p for p in ponged if p.height() <= self.height and not self.roots.search(p) and self.zero < p]
-			to_pingpong += qonged
-			for p in qonged:
-				p.set_multiplicity(self, mult)
-				self.roots.insert(p)
-CartanMatrix.pingpong = pingpong
+    return RootedCartanMatrix(M, height)

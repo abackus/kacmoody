@@ -1,5 +1,35 @@
 from pytrees import AVLTree
 
+CartanMatrix.multiplicities = dict()
+CartanMatrix.cs = dict()
+
+"""
+AUXILIARY METHODS FOR AVL TREES
+move to another file maybe?
+"""
+def as_list(self):
+	"""
+	Turns an AVLTree into a list, in the order that the entries appear
+	in the AVLTree.
+	"""
+	l = []
+	def asListHelper(node):
+		if node is None:
+			return []
+		return asListHelper(node.left) + [node.val] + asListHelper(node.right)
+
+	return asListHelper(self.root)
+AVLTree.as_list = as_list
+
+def insert_list(self, l):
+	"""
+	Adds a list into an AVLTree.
+	"""
+	for x in l:
+		self.insert(x)
+AVLTree.insert_list = insert_list
+
+
 def prime_code(list_form):
 	"""
 	Encode a list of integers as an integer using a "Godel code"
@@ -11,45 +41,38 @@ def prime_code(list_form):
 		c *= P.unrank(i)^list_form[i]
 	return c
 
-class root():
+
+class root(tuple):
     """
     The class for roots of a Kac-Moody algebra. 
     """
-    def __init__(self,list_form,multiplicity,c,subroots=None):
-        self.multiplicity = multiplicity
-        self.c            = c
+    #def __init__(self,list_form,multiplicity,c,subroots=None):
+    def __init__(self, list_form):
         self.list_form    = list_form
         self.vector_form  = vector(list_form)
         self.tuple_form   = tuple(list_form)
-        self.subroots     = subroots
         self.coding       = prime_code(list_form)
     def __str__(self):
-        return "this root : " + str(self.list_form)
+        return str(self.list_form)
     def __repr__(self):
-        return "this root : " + str(self.list_form)
+        return str(self.list_form)
     def __eq__(left, right):
-    	return left.list_form == right.list_form
+    	return left.coding == right.coding
     def __le__(left,right):
         return all(l <= r for l, r in zip(left.list_form, right.list_form))
     def __lt__(left,right):
         return all(l <= r for l, r in zip(left.list_form, right.list_form)) and not left.coding == right.coding
     def height(self):
         return sum(self.list_form)
-    def subroots(self):
-    	# Returns the set of subroots, if it is known.
-    	if self.subroots == None:
-    		raise UserWarning("Tried to find unknown subroots!")
-    	else:
-    		return self.subroots
+    def set_multiplicity(self, mat, m):
+    	mat.multiplicities[self.coding] = m
+    def multiplicity(self, mat):
+    	return mat.multiplicities[self.coding]
+    def set_c(self, mat, c):
+    	mat.cs[self.coding] = c
+    def c(self, mat):
+    	return mat.cs[self.coding]
 
-class T(tuple):
-    """
-    tuples; but enriched with some <= structure
-    """
-    def __le__(left, right):
-        return all(l <= r for l, r in zip(left, right))
-    def height(self):
-        return sum(list(self))
 
 """
 Auxiliary functions for the Cartan Matrix
@@ -59,16 +82,14 @@ def B(mat,a,b):
     """
     Returning the bilinear product induced by the Cartan Matrix
     """
-    return a*mat*b
-
+    return a*mat*b # does this make sense for nonsymmetric?
+ 
 def weyl(mat,r,s):
     """
     Weyl action on the root r by the simple root s
     """
- #   print('hi')
     rv = r.vector_form; sv = s.vector_form
-  #  print('bye')
-    return root(rv - B(mat,rv, sv)*sv, r.multiplicity, r.c) #is it c?
+    return root(rv - B(mat,rv, sv)*sv) #does this make sense for nonssymmetric?
 
 
 def exceptional(n):
@@ -92,24 +113,42 @@ def exceptional(n):
     M[n-2][n-1] = 0
     return CartanMatrix(M)
 
-def real_roots(cartan,height):
-    """
-    Returns the poset of real roots for a given cartan matrix, up to the height specified.
-    """
-    rroots  = AVLTree()
-    dim     = cartan.nrows()
-    simples = [root(tuple([int(a == b) for a in range(dim)]), 1, 1) for b in range(dim)]
-    zero    = root(tuple([0]*dim), 0, 0)
-    rroots = AVLTree.buildFromList(simples)
-    
-    to_pingpong = [x for x in simples]
-    while len(to_pingpong) != 0:
-        el = to_pingpong.pop()
-        pngd = [weyl(cartan,el,s) for s in simples] 
-        qngd = [p for p in pngd if p.height() <= height and not rroots.search(p) and zero < p]
-        to_pingpong += qngd
-        #[rroots.add(p) for p in qngd]
-        for p in qngd:
-            rroots.insert(p)
+CartanMatrix.simple_roots = []
+CartanMatrix.zero = root(tuple([]))
+CartanMatrix.roots = AVLTree()
+CartanMatrix.height = 100
 
-    return rroots
+def setup(self, height=100):
+	"""
+	Must call this before pingponging!
+	Declares the max height that we want to pingpong to,
+	then declares the basis of simple roots,
+	the adjoins the real roots.
+	"""
+	self.height = height
+	self.simple_roots = [root(tuple([int(a == b) for a in range(self.nrows())])) for b in range(self.nrows())]
+	for s in self.simple_roots:
+		s.set_multiplicity(self, 1)
+		s.set_c(self, 1)
+	self.zero = root(tuple([0] * self.nrows()))
+	self.pingpong(self.simple_roots)
+CartanMatrix.setup = setup
+
+def pingpong(self, generators):
+	"""
+	Adjoin all the roots, that can be obtained
+	by acting the Weyl group on the generators.
+	"""
+	self.roots.insert_list(generators)
+	for g in generators:
+		to_pingpong = [g]
+		mult = g.multiplicity(self)
+		while len(to_pingpong) != 0:
+			next_root    = to_pingpong.pop()
+			ponged       = [weyl(self, next_root, s) for s in self.simple_roots]
+			qonged       = [p for p in ponged if p.height() <= self.height and not self.roots.search(p) and self.zero < p]
+			to_pingpong += qonged
+			for p in qonged:
+				p.set_multiplicity(self, mult)
+				self.roots.insert(p)
+CartanMatrix.pingpong = pingpong

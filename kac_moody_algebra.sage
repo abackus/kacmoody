@@ -1,8 +1,5 @@
 from pytrees import AVLTree
 
-CartanMatrix.multiplicities = dict()
-CartanMatrix.cs = dict()
-
 """
 AUXILIARY METHODS FOR AVL TREES
 move to another file maybe?
@@ -65,25 +62,27 @@ class root(tuple):
         return all(l <= r for l, r in zip(left.list_form, right.list_form)) and not left.coding == right.coding
     def height(self):
         return sum(self.list_form)
-    def set_multiplicity(self, mat, m):
-    	mat.multiplicities[self.coding] = m
-    def multiplicity(self, mat):
-    	return mat.multiplicities[self.coding]
-    def set_c(self, mat, c):
-    	mat.cs[self.coding] = c
-    def c(self, mat):
-    	return mat.cs[self.coding] # REplace
+    def set_multiplicity(self, kma, m):
+    	kma.multiplicities[self.coding] = m
+    def multiplicity(self, kma):
+    	return kma.multiplicities[self.coding]
+    def set_c(self, kma, c):
+    	kma.cs[self.coding] = c
+    def c(self, kma):
+    	return kma.cs[self.coding] # REplace
 
-class RootedCartanMatrix(CartanMatrix):
+class KacMoodyAlgebra():
 	"""
 	The class for CartanMatrices decorated with more information.
 	"""
-	def __init__(self, height=30):
-		super().__init__(self)
+	def __init__(self, matrix, height=30):
+		self.matrix = CartanMatrix(matrix)
 		self.height = height
-		self.dim = self.nrows()
-		self.simple_roots = [root(tuple([int(a == b) for a in range(dim)])) for b in range(dim)]
+		self.dim = self.matrix.nrows()
+		self.simple_roots = [root(tuple([int(a == b) for a in range(self.dim)])) for b in range(self.dim)]
 		self.roots = AVLTree()
+		self.multiplicities = dict()
+		self.cs = dict()
 		self.zero = root(tuple([0] * self.dim))
 		for s in self.simple_roots:
 			s.set_multiplicity(self, 1)
@@ -94,7 +93,7 @@ class RootedCartanMatrix(CartanMatrix):
 		"""
 		Returns the bilinear product induced by self - does this work for nonsymmetric?
 		"""
-		return a * self * b
+		return a * self.matrix * b
 
 	def weyl(self, r, s):
 		"""
@@ -113,7 +112,7 @@ class RootedCartanMatrix(CartanMatrix):
 			mult = g.multiplicity(self)
 			while len(to_pingpong) != 0:
 				next_root    = to_pingpong.pop()
-				ponged       = [weyl(self, next_root, s) for s in self.simple_roots]
+				ponged       = [self.weyl(	next_root, s) for s in self.simple_roots]
 				qonged       = [p for p in ponged if p.height() <= self.height and not self.roots.search(p) and self.zero < p]
 				to_pingpong += qonged
 				for p in qonged:
@@ -140,4 +139,4 @@ def exceptional(n, height=30):
         M.append(row)
     M[n-1][n-2] = 0
     M[n-2][n-1] = 0
-    return RootedCartanMatrix(M, height)
+    return KacMoodyAlgebra(M, height)

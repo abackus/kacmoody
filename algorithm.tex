@@ -1,0 +1,210 @@
+\documentclass[12pt]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry} 
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{mathrsfs}
+\usepackage{cite}
+\usepackage{algorithm2e}
+
+\usepackage{enumitem}
+%\usepackage[shortlabels]{enumerate}
+\usepackage{tikz-cd}
+\usepackage{mathtools}
+\usepackage{amsfonts}
+\usepackage{amscd}
+\usepackage{makeidx}
+\usepackage{enumitem}
+\title{Algorithms for generalized Kac-Moody algebras}
+\author{Aidan Backus}
+\date{December 2019}
+
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\ZZ}{\mathbb{Z}}
+\newcommand{\QQ}{\mathbb{Q}}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\CC}{\mathbb{C}}
+\newcommand{\CP}{\mathbb{CP}}
+\newcommand{\DD}{\mathbb{D}}
+
+\newcommand{\AAA}{\mathcal A}
+\newcommand{\BB}{\mathcal B}
+\newcommand{\HH}{\mathcal H}
+
+\newcommand{\AssAlg}{\mathbf{AssAlg}}
+\newcommand{\Vect}{\mathbf{Vect}}
+\newcommand{\Grp}{\mathbf{Grp}}
+\newcommand{\LieAlg}{\mathbf{LieAlg}}
+\newcommand{\Mod}{\mathbf{Mod}}
+\newcommand{\Rep}{\mathbf{Rep}}
+\newcommand{\Set}{\mathbf{Set}}
+
+\DeclareMathOperator*{\ad}{ad}
+\newcommand{\Aut}{\operatorname{Aut}}
+\newcommand{\Cantor}{\mathcal{C}}
+\DeclareMathOperator*{\crk}{corank}
+\newcommand{\D}{\mathcal{D}}
+\newcommand{\card}{\operatorname{card}}
+\DeclareMathOperator*{\coker}{coker}
+\newcommand{\diam}{\operatorname{diam}}
+\newcommand{\End}{\operatorname{End}}
+\DeclareMathOperator*{\esssup}{ess\,sup}
+\newcommand{\FF}{\mathcal{F}}
+\newcommand{\GL}{\operatorname{GL}}
+\newcommand{\Hom}{\operatorname{Hom}}
+\newcommand{\id}{\operatorname{id}}
+\newcommand{\Ind}{\operatorname{Ind}}
+\newcommand{\interior}{\operatorname{int}}
+\newcommand{\lcm}{\operatorname{lcm}}
+\newcommand{\Lip}{\operatorname{Lip}}
+\newcommand{\MM}{\mathcal M}
+\newcommand{\OO}{\mathcal{O}}
+\newcommand{\PGL}{\operatorname{PGL}}
+\newcommand{\pic}{\vspace{30mm}}
+\newcommand{\pset}{\mathcal{P}}
+\DeclareMathOperator*{\rk}{rank}
+\newcommand{\Res}{\operatorname{Res}}
+\newcommand{\Riem}{\mathcal{R}}
+\newcommand{\Sch}{\mathcal{S}}
+\newcommand{\SL}{\operatorname{SL}}
+\newcommand{\spn}{\operatorname{span}}
+\newcommand{\supp}{\operatorname{supp}}
+
+\newcommand{\altrep}{\rho_{\text{alt}}}
+\newcommand{\trivrep}{\rho_{\text{triv}}}
+\newcommand{\regrep}{\rho_{\text{reg}}}
+\newcommand{\stdrep}{\rho_{\text{std}}}
+
+\newcommand{\g}{\mathfrak g}
+\newcommand{\h}{\mathfrak h}
+\newcommand{\gl}{\mathfrak {gl}}
+\renewcommand{\sl}{\mathfrak {sl}}
+
+\def\Xint#1{\mathchoice
+{\XXint\displaystyle\textstyle{#1}}%
+{\XXint\textstyle\scriptstyle{#1}}%
+{\XXint\scriptstyle\scriptscriptstyle{#1}}%
+{\XXint\scriptscriptstyle\scriptscriptstyle{#1}}%
+\!\int}
+\def\XXint#1#2#3{{\setbox0=\hbox{$#1{#2#3}{\int}$ }
+\vcenter{\hbox{$#2#3$ }}\kern-.6\wd0}}
+\def\ddashint{\Xint=}
+\def\dashint{\Xint-}
+
+\renewcommand{\Re}{\operatorname{Re}}
+\renewcommand{\Im}{\operatorname{Im}}
+
+\newcommand{\dfn}[1]{\emph{#1}\index{#1}}
+ 	
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{prop}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{problem}[theorem]{Problem}
+
+\begin{document}
+\chapter{blah}
+\section{Notation}
+Let $\g$ be a Kac-Moody algebra of rank $d$. Let $\langle\cdot,\cdot\rangle$ denote the Killing form and $\rho$ denote the Weyl vector. TODO: How do we get these if $\g$ is not symmetric?
+
+Let $R$ denote the set of real roots up to a given height. Let $Q$ denote the root lattice and let $\Delta$ denote the set of roots. For these, we let $Q^\pm$ and $\Delta^\pm$ denote the positive and negative subsets, respectively. We let $\Delta^r$ denote the real roots in $\Delta^+$ and $\Delta^i$ denote the imaginary roots of $\Delta^+$.
+
+We work in the basis of simple roots $\Delta_{simp} = \{\alpha_1, \dots, \alpha_d\}$ of $Q$ and let $\Delta_{fun}$ denote the fundamental chamber of $\g$; i.e. the set of all positive imaginary roots $\beta \in \Delta^i$ such that for every $\alpha_j \in \Delta_{simp}$,
+$$\langle \beta, \alpha_j\rangle \geq 0.$$
+
+For any $\beta \in Q$, we let $|\beta|$ denote its height, i.e. the sum of its coordinates with respect to $\Delta_{simp}$. We let $m(\beta)$ denote its multiplicity and make the following definition.
+\begin{definition}
+	A \dfn{divisor} of $\beta$ is a $\gamma \in Q^+$ such that there is a $n \in \NN$ satisfying $n\gamma = \beta$. In this case, we write $\gamma|\beta$.
+\end{definition}
+With this definition in mind, we define
+$$c(\beta) = \sum_{\gamma_d|\beta} \frac{m(\gamma_d)}{d}.$$
+This sum appears in the Peterson recurrence formula and is the key to computing root multiplicities.
+
+\section{Generating the set of roots}
+Recall that each of the $\alpha_j \in \Delta_{simp}$ determines a generator $w_j$ of the Weyl group $W$ by
+$$w_j(\beta) = \beta - \langle \beta, \alpha\rangle \alpha.$$
+Moreover, each real root $\alpha \in \Delta^r$ lies in the orbit of a $\alpha_j$ and so all of $\Delta^r$ can be obtained by acting $W$ on $\Delta_{simp}$. To be more precise, we use the following algorithm to compute $\Delta^r$:
+\begin{algorithm}[H]
+	\KwData{a root $\alpha \in \Delta^+$, a maximum height $h$}
+	$\ell := \text{Queue}(\alpha)$\;
+	\While{$\ell \neq \emptyset$}{
+		$\beta := \text{Pop}(\ell)$\;
+		$P := \{w_1(\beta), \dots, w_d(\beta)\}$\;
+		$P := \{\gamma \in P: |\gamma| \leq h \text{ and } \gamma \geq 0\}$\;
+		$\Delta^+ := \Delta^+ \cup P$\;
+		\For{$\gamma \in P$}{
+			Push$(\ell, \gamma)$\;
+			$m(\gamma) := m(\alpha)$\;
+			$c(\gamma) := c(\alpha)$\;
+		}
+	}
+\end{algorithm}
+We call this algorithm the \dfn{pingpong algorithm}. It is essentially standard for Coxeter groups such as the Weyl group, and will add the entire orbit of $\alpha$ to $\Delta^+$, along with recording the values of $m(\gamma)$ and $c(\gamma)$ for $\gamma$ in the orbit, which are presered by the action of the Weyl group. (TODO: Is $c$ preserved or is the fact that this has worked so far an insane coincidence?)
+
+After initializing each of the $m(\alpha_j) = c(\alpha_j) = 1$, and pingponging each of the $\alpha_j \in \Delta_{simp}$, we have generated all of $\Delta^r$ up to height $h$. We now must generate the imaginary roots $\Delta^i$. Similar to the case of real roots, we simply must choose one root from each orbit, and to this end we compute the imaginary roots from the imaginary fundamental chamber, $\Delta_{fun}$.
+
+We now recall the following theorem of convex geometry, proven for example in Bruns-Gubeladze \cite{bruns2009polytopes}.
+\begin{theorem}[Gordan]
+	Let $\Gamma$ be a rational convex polyhedral cone in $\RR^n$ with dual cone
+	$$\Gamma^* = \{y \in \RR^n: \forall x \in \Gamma ~(y, x) \geq 0\},$$
+	where $(\cdot, \cdot)$ denotes the pairing of $\RR^n$ with itself. If $G = (G, +)$ is the semigroup of lattice points in $\Gamma^*$, then $G$ is finitely generated.
+\end{theorem}
+Taking $\Delta_{simp}$ as a basis of $\RR^d$, we recall that a root $\beta$ is imaginary if and only if for every $\alpha_j \in \Delta_{simp}$,
+$$\langle \beta, \alpha_j\rangle < 0,$$
+from which it follows that if $\Gamma$ denotes the cone determined by the Cartan matrix of $\g$, $\Delta_{fun}$ is precisely the semigroup of lattice points in $\Gamma^*$.
+
+We have proven the following result. TODO: Does this still work when $\g$ is not symmetric?
+\begin{corollary}
+	As an additive semigroup, $\Delta_{fun}$ admits a \dfn{Hilbert basis}; i.e. a minimal, finite generating set.
+\end{corollary}
+The Hilbert basis of $\Delta_{fun}$ can be computed efficiently from the Cartan matrix of $\g$ by e.g. the Elliot-MacMahon algorithm \cite{pasechnik2001computing}. In our implementation we use polymake \cite{polymake2000}'s implementation of the Elliot-MacMahon algorithm. From the Hilbert basis, it is easy to compute $\Delta_{fun}$ as a set (up to height $h$), but we now must compute $m$ and $c$, and then pingpong the elements of $\Delta_{fun}$ to $\Delta^i$.
+
+\section{Computing root multiplicities}
+Fix a $\beta \in \Delta_{fun}$. Before explaining our implementation of the Peterson recurrence formula, first note a few preliminary results.
+
+First, we can compute divisors of $\beta$ easily, simply by writing $\beta$ in the basis of simple roots,
+	$$\beta = \sum_{j=1}^n a_j \alpha_j,$$
+	and iterating over the common divisors $d$ of the $a_j$. Then $\gamma$ is a divisor of $\beta$ iff there is a common divisor $d$ such that $\gamma = \beta/d$.
+
+\begin{definition}
+	If $\gamma \in Q^+$ is such that $\beta - \gamma \in Q^+$, then we say that $\gamma$ is a \dfn{subroot} of $\beta$, and write $\gamma \prec \beta$.
+\end{definition}
+
+\begin{theorem}[Peterson recurrence formula]
+	For $d \in \NN$, let $\gamma_d$ denote the divisor of $\beta$ such that $d\gamma_d = \beta$. Then we have
+	$$B(\beta, 2\rho - \beta) c(\beta) = \sum_{\gamma \prec \beta} \langle \gamma, \beta - \gamma \rangle c(\gamma) c(\beta - \gamma).$$
+\end{theorem}
+Peterson's recurrence formula is proven, for example, in Kac's book \cite{kac_2014}.
+
+TODO: Write this as we optimize the algorithm.
+\begin{definition}
+	The \dfn{base root} of $\beta$, denoted $b(\beta)$, is the divisor $\gamma$ of $\beta$ of least height.
+\end{definition}
+	$b(\beta)$ is easily computed by computing the gcd $d$ of the coefficients $c_j$ of $\beta$, and then taking $b(\beta) = \beta/d$.
+
+
+The advantage of this approach is that naively iterating over all elements of the root lattice of height at most $h$, for a $d$-dimensional Cartan matrix, is the same as iterating over the set of all different ways to put $h$ balls in $d + 1$ boxes (the last box for when the vector's entries add up to strictly less than $h$), which is a set of cardinality $\binom{n-1}d$. But the number of pseudoroots is in general much lower than $\binom{n-1}d$, especially if $\g$ is affine or even just hyperbolic. For example, to compute the root multiplicities of the hyperbolic Lie algebra $E_{10}$ up to height $60$, we must iterate over $3 \cdot 10^3$ real roots. Meanwhile $\binom{59}{10} \approx 6 \cdot 10^{10}$. On the other hand, the set of real roots is exponential in cardinality. (TODO: Somehow optimize on this!)
+
+
+\section{Verification}
+We compare our root multiplicities to those found by \cite{kleinschmidt2004e11}.
+
+
+\section{Conjectures}
+Let $\beta$ be an imaginary root of $\g$ with height $|\beta|$. One has the trivial estimate
+$$m(\beta) \leq d^{|\beta|}$$
+and we conjecture that this estimate is sharp in the sense that if $\g$ is \emph{any} Kac-Moody algebra of rank $d$ with a nontrivial Tits cone and connected Dynkin diagram, then there is a root $\beta$ such that $m(\beta) = d^{|\beta|}$ (or in the sense that there is a sequence of roots $\beta_n$ such that $m(\beta_n) \sim d^{|\beta_n|}$?) (TODO: Prove it.	)
+
+
+
+\bibliography{algorithm}{}
+\bibliographystyle{plain}
+
+\end{document}
+

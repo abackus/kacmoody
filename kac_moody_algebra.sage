@@ -50,11 +50,6 @@ class root(tuple):
 	def divisors(self, j):
 		# Return all roots beta such that m * beta = self, for m >= j
 		return [(root(self/m), m) for m in divisors(gcd(self.list_form)) if m >= j]
-	def is_positive(self):
-		return all([i >= 0 for i in self.list_form]) and any([i > 0 for i in self.list_form])
-	def base_root(self):
-		# Return the root of least height in the span of self
-		return root(tuple(self/divisors(gcd(self.list_form))[-1]))
 
 class KacMoodyAlgebra():
 	"""
@@ -71,14 +66,12 @@ class KacMoodyAlgebra():
 		self.cs = dict()
 		self.zero_root = root(tuple([0] * self.dim))
 		self.cs[self.zero_root] = 0
-		
+
 		for s in self.simple_roots:
 			self.multiplicities[s] = 1
 			self.cs[s] = 1
-		print('Done generating simple roots...')
-		self.pingpong(self.simple_roots)
+			self.pingpong(s)
 		print('Done generating real roots...')
-		print('Found ' + str(len(self.roots)) + ' real roots.')
 		
 		possible_imag_basis = [root(list(-x)) for x in Cone(matrix).dual().Hilbert_basis()]
 		self.imag_basis = [r for r in possible_imag_basis if r > self.zero_root]
@@ -99,81 +92,109 @@ class KacMoodyAlgebra():
 		"""
 		return root(r - self.B(r, s) * s)
 
-	def pingpong(self, generators):
+	def pingpong(self, g):
 		"""
 		Adjoin all the roots, that can be obtained
-		by acting the Weyl group on the generators, up to height
+		by acting the Weyl group on g, up to height
 		"""
-		for g in generators:
-			to_pingpong = [g]
-			mult = self.multiplicities[g]
-			c	= self.cs[g]
-			while len(to_pingpong) != 0:
-				next_root	= to_pingpong.pop()
-				ponged	   = [self.weyl(next_root, s) for s in self.simple_roots]
-				qonged	   = [p for p in ponged if p.height <= self.height and self.zero_root <= p]
-				for p in qonged:
-					if p not in self.roots:
-						to_pingpong.append(p)
-						self.multiplicities[p] = mult
-						self.cs[p] = c
-						self.roots.add(p)
+		to_pingpong = [g]
+		mult = self.multiplicities[g]
+		c	= self.cs[g]
+		while len(to_pingpong) != 0:
+			next_root	= to_pingpong.pop()
+			ponged	   = [self.weyl(next_root, s) for s in self.simple_roots]
+			qonged	   = [p for p in ponged if p.height <= self.height and self.zero_root <= p]
+			for p in qonged:
+				if p not in self.roots:
+					to_pingpong.append(p)
+					self.multiplicities[p] = mult
+					self.cs[p] = c
+					self.roots.add(p)
 
-	def peterson(self, r, subroot):
-		# Adds to the RHS of the Peterson formula.
-		# Iterate this method over all subroots of the Peterson formula.
-		coroot = root(r - subroot)
-		#print('hip')
-		if coroot not in self.cs:
-			self.cs[coroot] = sum([self.multiplicities[d[0]]/d[1] for d in coroot.divisors(1) if d[0] in self.roots])
-		#print('hup')
-		if self.cs[coroot] > 0:
-			if subroot not in self.cs:
-				self.cs[subroot] = sum([self.multiplicities[d[0]]/d[1] for d in subroot.divisors(1) if d[0] in self.roots])
-			#print('hooray!')
-			return self.cs[subroot] * self.cs[coroot] * self.B(subroot, coroot)
-		return 0
+	def lookup_coroot_c(self, r):
+		# Look up c of a coroot, where we might not know the answer
+		# Also declares the multiplicity to be 0 and then pingpongs
+		if r in self.cs:
+			return self.cs[r]
+		else:
+			c = 0
+			for d in r.divisors(1):
+				if d[0] in self.roots:
+					# TODO: Find a closed form for this, in terms of the gcd of the entries of r
+					# so we don't have to compute divisors every time.
+					c = c + self.multiplicities[d[0]]/d[1]
+					if c > 0:
+						break
+			print('had to lookup', r, c)
+			#self.multiplicities[r] = 0 # TODO Edit pingpong so we don't have to do this.
+			self.cs[r] = c
+			#self.pingpong(r)
+			return c
+
 
 	def graded_ascent(self):
 		#First, generate all imaginary roots
 		coeff_lists = sub_parts([floor(self.height/r.height) for r in self.imag_basis])[1:]
 		#Only need coeffs up to a certain point to bound by height
-		fun_chamber = []
+		self.fun_chamber = []
 		for x in coeff_lists:
 			next_root = sum([self.imag_basis[i] * x[i] for i in range(len(x))])
 			if sum(next_root) <= self.height:
 				next_root = root(list(next_root))
-				if next_root not in fun_chamber:
-					fun_chamber.append(next_root)
-		fun_chamber = sorted(fun_chamber, key=lambda r: r.height)
+				if next_root not in self.fun_chamber:
+					self.fun_chamber.append(next_root)
+		self.fun_chamber = sorted(self.fun_chamber, key=lambda r: r.height)
 
-		for r in fun_chamber:
+		for r in self.fun_chamber:
 			# Now, compute the multiplicity and c-value of r
+			if self.dim == 2: # TODO: Doesn't work if nonsymmetric!
+				# This is a nice optimization for the 2D symmetric case, wherein we can assume that r[1] < r[2].
+				opposite = root([r.list_form[1], r.list_form[0]])
+				if opposite in self.roots:
+					self.roots.add(r)
+					self.cs[r] = self.cs[opposite]
+					self.multiplicities[r] = self.multiplicities[opposite]
+					self.pingpong(r)
+					continue
+			# TODO: Possible optimization -- what if B(r, r) = 0? Does this imply that m(r) = rank(matrix)?
 			RHS = 0 # right-hand side of the Peterson formula
 			subroots = [s for s in self.roots if s < r] # could this be sped up?
-			already_summed = set()
 			for s in subroots:
-				# Either a root is real (spacelike), or imaginary (lightlike or timelike).
-				# The set of imaginary roots is very small, so we do not optimize for it.
-				# If we know the behavior of a root, we know the behavior
-				# of all roots in its span.
-				# First, if s is an imaginary root, we do the dumbest thing possible.
-				if self.B(s, s) <= 0:
-					RHS = RHS + self.peterson(r, s)
-				elif s not in already_summed:
-					s = s.base_root()
+				# TODO: Optimization: Multiplication by 2
+				norm = self.B(s, s)
+				coroot = root(r - s)
+				if not self.zero_root < coroot:
+					continue
+				if norm > 0:
+					# Real subroots
+					pairing = self.B(s, r)
+					current_sum = 0
 					for n in range(1, floor(r.height/s.height) + 1):
-						ns = root(n * s)
-						if n > 1 and ns in subroots:
-							already_summed.add(s)
-						RHS = RHS + self.peterson(r, ns)
+						# TODO: There's probably a way to find the closed form of n_coroot
+						# and not have to do this loop.
+						n_coroot = root(r - n * s)
+						if not self.zero_root < n_coroot:
+							break
+						current_sum = current_sum + (pairing - n * norm) * self.lookup_coroot_c(n_coroot)
+					RHS = RHS + self.multiplicities[s] * current_sum
+				elif self.lookup_coroot_c(coroot) > 0:
+					# Imaginary subroots
+					RHS = RHS +	self.cs[s] * self.cs[coroot] * self.B(s, coroot)
 			self.cs[r] = RHS/(self.B(r, r) - 2 * r.height)
-			print(str(self.B(r, r) - 2 * r.height))
 			self.multiplicities[r] = self.cs[r] - sum([self.multiplicities[d[0]]/d[1] for d in r.divisors(2)])
 			self.roots.add(r)
-			self.pingpong([r])
-			print(r, r.height, self.B(r, r), self.multiplicities[r], self.cs[r])
+			self.pingpong(r)
 		print("Generated all imaginary roots...")
+
+	def print_to_file(self, filename):
+		# Prints fundamental chamber to filename.tsv, and
+		# all roots to filename_raw.tsv
+		with open(filename + '.tsv', 'w') as f:
+			for r in self.fun_chamber:
+				f.write(str(r) + '	' + str(r.height) + '	' + str(self.B(r, r)) + '	' + str(self.multiplicities[r]) + '	' + str(self.cs[r]) + '\n')
+		with open(filename + '_raw.tsv', 'w') as f:
+			for r in self.roots:
+				f.write(str(r) + '	' + str(r.height) + '	' + str(self.B(r, r)) + '	' + str(self.multiplicities[r]) + '	' + str(self.cs[r]) + '\n')
 
 
 def exceptional(n):

@@ -111,95 +111,124 @@
 \begin{document}
 \chapter{blah}
 \section{Notation}
-Let $\g$ be a Kac-Moody algebra of rank $d$. Let $\langle\cdot,\cdot\rangle$ denote the Killing form and $\rho$ denote the Weyl vector. TODO: How do we get these if $\g$ is not symmetric?
+Let $\g$ be a Kac-Moody algebra of rank $d$, with symmetrizable Cartan matrix $A = (a_{ij})_{ij}$. We decompose $A = DB$ where $D$ is a diagonal matrix with entries $\varepsilon_1, \dots, \varepsilon_d$ and $B = (b_{ij})_{ij}$ is symmetric. Let $(\cdot,\cdot)$ denote the Killing form and $\rho$ denote the Weyl vector; i.e. any vector $\rho$ such that $2(\rho, \alpha_i) = (\alpha_i, \alpha_i)$ for every $i \leq d$.
 
-Let $R$ denote the set of real roots up to a given height. Let $Q$ denote the root lattice and let $\Delta$ denote the set of roots. For these, we let $Q^\pm$ and $\Delta^\pm$ denote the positive and negative subsets, respectively. We let $\Delta^r$ denote the real roots in $\Delta^+$ and $\Delta^i$ denote the imaginary roots of $\Delta^+$.
+Let $Q$ denote the root lattice and let $\Delta$ denote the set of roots. For these, we let $Q^\pm$ and $\Delta^\pm$ denote the positive and negative subsets, respectively. We let $\Delta^r$ denote the real roots in $\Delta^+$ and $\Delta^i$ denote the imaginary roots of $\Delta^+$.
 
-We work in the basis of simple roots $\Delta_{simp} = \{\alpha_1, \dots, \alpha_d\}$ of $Q$ and let $\Delta_{fun}$ denote the fundamental chamber of $\g$; i.e. the set of all positive imaginary roots $\beta \in \Delta^i$ such that for every $\alpha_j \in \Delta_{simp}$,
-$$\langle \beta, \alpha_j\rangle \geq 0.$$
+We work in the basis of simple roots $\Delta_{simp} = \{\alpha_1, \dots, \alpha_d\}$ of $Q$, whose fundamental reflections are denoted $w_1, \dots, w_d$, and let $\Delta_{fun}$ denote the imaginary fundamental chamber of $\g$; i.e. the set of all positive imaginary roots $\beta \in \Delta^i$ such that for every $\alpha_j \in \Delta_{simp}$,
+$$(\beta, \alpha_j) \geq 0.$$
+In this basis, if $\gamma = \sum_i \gamma^i \alpha_i$ and $\delta = \sum_j \delta^j \alpha_j$, one has
+$$(\gamma, \delta) = \sum_{i,j} \gamma^i \delta^j b_{ij} \varepsilon_i \varepsilon_j = \gamma \cdot DBD \delta.$$
 
-For any $\beta \in Q$, we let $|\beta|$ denote its height, i.e. the sum of its coordinates with respect to $\Delta_{simp}$. We let $m(\beta)$ denote its multiplicity and make the following definition.
+For any $\beta \in Q$, we let $|\beta|$ denote its height, i.e. the sum of its coordinates with respect to $\Delta_{simp}$. With the above notation, it follows that
+$$(\gamma, 2\rho) = |Z\gamma|.$$ We let $m(\beta)$ denote its multiplicity and make the following definition.
 \begin{definition}
 	A \dfn{divisor} of $\beta$ is a $\gamma \in Q^+$ such that there is a $n \in \NN$ satisfying $n\gamma = \beta$. In this case, we write $\gamma|\beta$.
 \end{definition}
 With this definition in mind, we define
-$$c(\beta) = \sum_{\gamma_d|\beta} \frac{m(\gamma_d)}{d}.$$
-This sum appears in the Peterson recurrence formula and is the key to computing root multiplicities.
+$$c(\beta) = \sum_{\gamma_d|\beta} \frac{m(\gamma_d)}{d}$$
+where we have $d\gamma_d = \beta$. This sum appears in the Peterson recurrence formula and is the key to computing root multiplicities.
+We define $\gcd \beta$ to denote the $\gcd$ of the coordinates of $\beta$ (with respect to $\Delta_{simp}$). In case $\gcd \beta = 1$, we say that $\beta$ is a \emph{prime root}.
 
 \section{Generating the set of roots}
 Recall that each of the $\alpha_j \in \Delta_{simp}$ determines a generator $w_j$ of the Weyl group $W$ by
-$$w_j(\beta) = \beta - \langle \beta, \alpha\rangle \alpha.$$
+$$w_j(\beta) = \beta - ( \beta, \alpha) \alpha.$$
 Moreover, each real root $\alpha \in \Delta^r$ lies in the orbit of a $\alpha_j$ and so all of $\Delta^r$ can be obtained by acting $W$ on $\Delta_{simp}$. To be more precise, we use the following algorithm to compute $\Delta^r$:
 \begin{algorithm}[H]
 	\KwData{a root $\alpha \in \Delta^+$, a maximum height $h$}
-	$\ell := \text{Queue}(\alpha)$\;
+	$\ell := \text{Stack}(\alpha)$\;
 	\While{$\ell \neq \emptyset$}{
 		$\beta := \text{Pop}(\ell)$\;
 		$P := \{w_1(\beta), \dots, w_d(\beta)\}$\;
 		$P := \{\gamma \in P: |\gamma| \leq h \text{ and } \gamma \geq 0\}$\;
-		$\Delta^+ := \Delta^+ \cup P$\;
-		\For{$\gamma \in P$}{
+		\For{$\gamma \in P \setminus \Delta^+$}{
+			$\Delta^+ := \Delta^+ \cup \gamma$\;
 			Push$(\ell, \gamma)$\;
 			$m(\gamma) := m(\alpha)$\;
 			$c(\gamma) := c(\alpha)$\;
 		}
 	}
 \end{algorithm}
-We call this algorithm the \dfn{pingpong algorithm}. It is essentially standard for Coxeter groups such as the Weyl group, and will add the entire orbit of $\alpha$ to $\Delta^+$, along with recording the values of $m(\gamma)$ and $c(\gamma)$ for $\gamma$ in the orbit, which are presered by the action of the Weyl group. (TODO: Is $c$ preserved or is the fact that this has worked so far an insane coincidence?)
+We call this algorithm the \dfn{pingpong algorithm}. It will add $w\alpha$ to $\Delta^+$ for every $w \in W$ such that $|w\alpha| \leq h$, along with recording the values of $m(\gamma)$ and $c(\gamma)$ for $\gamma$ in the orbit, which are preserved by the action of the Weyl group. Indeed, let $w = w_{i_1} \dots w_{i_k}$ and assume that $w^\flat = w_{i_2} \dots w_{i_k}$ is such that $w^\flat \alpha$ been added to $\Delta^+$. Then $w\alpha = w_{i_1}w^\flat \alpha$ and so $w\alpha \in P$. Therefore the claim follows by induction.
 
 After initializing each of the $m(\alpha_j) = c(\alpha_j) = 1$, and pingponging each of the $\alpha_j \in \Delta_{simp}$, we have generated all of $\Delta^r$ up to height $h$. We now must generate the imaginary roots $\Delta^i$. Similar to the case of real roots, we simply must choose one root from each orbit, and to this end we compute the imaginary roots from the imaginary fundamental chamber, $\Delta_{fun}$.
 
 We now recall the following theorem of convex geometry, proven for example in Bruns-Gubeladze \cite{bruns2009polytopes}.
 \begin{theorem}[Gordan]
-	Let $\Gamma$ be a rational convex polyhedral cone in $\RR^n$ with dual cone
-	$$\Gamma^* = \{y \in \RR^n: \forall x \in \Gamma ~(y, x) \geq 0\},$$
-	where $(\cdot, \cdot)$ denotes the pairing of $\RR^n$ with itself. If $G = (G, +)$ is the semigroup of lattice points in $\Gamma^*$, then $G$ is finitely generated.
+	Let $\Gamma$ be a rational convex polyhedral cone in $\RR^d$ with dual cone
+	$$\Gamma^* = \{y \in (\RR^d)^*: \forall x \in \Gamma ~yx \geq 0\}.$$
+	If $G = (G, +)$ is the semigroup of lattice points in $\Gamma^*$, then $G$ is finitely generated.
 \end{theorem}
-Taking $\Delta_{simp}$ as a basis of $\RR^d$, we recall that a root $\beta$ is imaginary if and only if for every $\alpha_j \in \Delta_{simp}$,
-$$\langle \beta, \alpha_j\rangle < 0,$$
-from which it follows that if $\Gamma$ denotes the cone determined by the Cartan matrix of $\g$, $\Delta_{fun}$ is precisely the semigroup of lattice points in $\Gamma^*$.
-
-We have proven the following result. TODO: Does this still work when $\g$ is not symmetric?
 \begin{corollary}
-	As an additive semigroup, $\Delta_{fun}$ admits a \dfn{Hilbert basis}; i.e. a minimal, finite generating set.
+	$\Delta_{fun}$ is contained in a semigroup which admits a \dfn{Hilbert basis}; i.e. a minimal, finite generating set.
 \end{corollary}
-The Hilbert basis of $\Delta_{fun}$ can be computed efficiently from the Cartan matrix of $\g$ by e.g. the Elliot-MacMahon algorithm \cite{pasechnik2001computing}. In our implementation we use polymake \cite{polymake2000}'s implementation of the Elliot-MacMahon algorithm. From the Hilbert basis, it is easy to compute $\Delta_{fun}$ as a set (up to height $h$), but we now must compute $m$ and $c$, and then pingpong the elements of $\Delta_{fun}$ to $\Delta^i$.
+\begin{proof}
+	Let $\Gamma$ denote the Tits cone of $\g$. Since $\Gamma$ is given by the Cartan matrix of $\g$ (TODO: is this true if $\g$ is not symmetric?), $\Gamma$ is polyhedral, and rational since the entries of $\g$ are integers. Moreover, taking $\Delta_{simp}$ as a basis of $\RR^d$, we recall that the inequality defining $\Delta_{fun}$, from which it follows that $\Delta_{fun}$ is contained in the semigroup of lattice points of $\Gamma^*$. By Gordan's theorem, $\Gamma^*$ is finitely generated, so we take as our Hilbert basis a generating set of minimal cardinality.
+\end{proof}
 
-\section{Computing root multiplicities}
-Fix a $\beta \in \Delta_{fun}$. Before explaining our implementation of the Peterson recurrence formula, first note a few preliminary results.
-
-First, we can compute divisors of $\beta$ easily, simply by writing $\beta$ in the basis of simple roots,
-	$$\beta = \sum_{j=1}^n a_j \alpha_j,$$
-	and iterating over the common divisors $d$ of the $a_j$. Then $\gamma$ is a divisor of $\beta$ iff there is a common divisor $d$ such that $\gamma = \beta/d$.
-
-\begin{definition}
-	If $\gamma \in Q^+$ is such that $\beta - \gamma \in Q^+$, then we say that $\gamma$ is a \dfn{subroot} of $\beta$, and write $\gamma \prec \beta$.
-\end{definition}
-
-\begin{theorem}[Peterson recurrence formula]
-	For $d \in \NN$, let $\gamma_d$ denote the divisor of $\beta$ such that $d\gamma_d = \beta$. Then we have
-	$$B(\beta, 2\rho - \beta) c(\beta) = \sum_{\gamma \prec \beta} \langle \gamma, \beta - \gamma \rangle c(\gamma) c(\beta - \gamma).$$
-\end{theorem}
-Peterson's recurrence formula is proven, for example, in Kac's book \cite{kac_2014}.
-
-TODO: Write this as we optimize the algorithm.
-\begin{definition}
-	The \dfn{base root} of $\beta$, denoted $b(\beta)$, is the divisor $\gamma$ of $\beta$ of least height.
-\end{definition}
-	$b(\beta)$ is easily computed by computing the gcd $d$ of the coefficients $c_j$ of $\beta$, and then taking $b(\beta) = \beta/d$.
-
+The Hilbert basis $\beta_1, \dots, \beta_k$ of $\Gamma^*$ can be computed efficiently from the Cartan matrix of $\g$ by e.g. the Elliot-MacMahon algorithm \cite{pasechnik2001computing}. In our implementation we use polymake \cite{polymake2000}'s implementation of the Elliot-MacMahon algorithm. From the Hilbert basis, any $\beta \in \Delta_{fun}$ can be written uniquely as a linear combination of the $\beta_j$.
 
 The advantage of this approach is that naively iterating over all elements of the root lattice of height at most $h$, for a $d$-dimensional Cartan matrix, is the same as iterating over the set of all different ways to put $h$ balls in $d + 1$ boxes (the last box for when the vector's entries add up to strictly less than $h$), which is a set of cardinality $\binom{n-1}d$. But the number of pseudoroots is in general much lower than $\binom{n-1}d$, especially if $\g$ is affine or even just hyperbolic. For example, to compute the root multiplicities of the hyperbolic Lie algebra $E_{10}$ up to height $60$, we must iterate over $3 \cdot 10^3$ real roots. Meanwhile $\binom{59}{10} \approx 6 \cdot 10^{10}$. On the other hand, the set of real roots is exponential in cardinality. (TODO: Somehow optimize on this!)
 
 
+\section{Computing root multiplicities}
+	We are almost ready to give the algorithm that computes root multiplicities, but to do so, first we must state some preliminary results.
+\begin{definition}
+	Let $\beta \in \Delta_{fun}$. If $\gamma \in Q^+$ is such that $\beta - \gamma \in Q^+$, then we say that $\gamma$ is \dfn{under} $\beta$, and write $\gamma \prec \beta$.
+\end{definition}
+	It is immediate that $\preceq$ is a partial order, and that if $\gamma \prec \beta$, then $|\gamma| < |\beta|$.
+
+	For the remainder of this section, fix a $\beta \in \Delta_{fun}$. We must compute $c(\beta)$. By pingponging $\beta$, we immediately have $c(w\beta)$ for every $w \in W$ with $|w\beta| \leq h$. If $w \neq 1$, then $\beta \prec w\beta$. We make the inductive assumption that if $\gamma \prec \beta$ and $(\gamma, \gamma) \leq 0$, then we know $c(\gamma)$. This can be guaranteed by ordering $\Delta_{fun}$ by height. Indeed, if $\gamma \prec \beta$, there is a $w \in W$ such that $w\gamma \in \Delta_{fun}$, and $w\gamma \preceq \gamma \prec \beta$ and so $|w\gamma| < |\beta|$, so we have already computed $c(w\gamma)$ and so $c(\gamma)$ before arriving at $\beta$ in the iteration of $\Delta_{fun}$. So, in particular, we can compute
+	$$m(\beta) = c(\beta) - \sum_{\gamma_d|\beta} \frac{m(\gamma_d)}{d}$$
+	where $d\gamma_d = \beta$.
+
+To compute $c(\beta)$, we use Peterson's recurrence formula.
+\begin{theorem}[Peterson's recurrence formula]
+	One has
+	$$c(\beta) = \frac{1}{( \beta, \beta - 2\rho)}\sum_{\gamma \prec \beta} ( \gamma, \beta - \gamma ) c(\gamma) c(\beta - \gamma).$$
+\end{theorem}
+Peterson's recurrence formula is proven, for example, in Kac's book \cite{kac_2014}. Notice that $\gamma \prec \beta$ if and only if $\beta - \gamma \prec \beta$. Therefore, keeping our definition of $Z$ in mind, we really only need to compute
+$$c(\beta) = \frac{2}{( \beta, \beta) - |Z\beta|}\sum_{\substack{\gamma \prec \beta\\\gamma \ll \beta - \gamma}} ( \gamma, \beta - \gamma ) c(\gamma) c(\beta - \gamma)$$
+where $\ll$ is any total ordering on $Q^+$.
+
+Recall that if $\alpha \in \Delta^r$, then for no $n \geq 2$ is $n \alpha$ a root. So we need to compute $c(n\alpha)$ for every $\alpha$ and every $n$ such that $n \alpha \prec \beta$. To do this, we need a lemma.
+\begin{lemma}
+	Let $\ell = \gcd \gamma$ and assume $(\gamma, \gamma) > 0$. If $\gamma/\ell \in \Delta$, then $c(\gamma) = 1/\ell$. Otherwise, $c(\gamma) = 0$.
+\end{lemma}
+\begin{proof}
+	We write $\gamma = \sum_i \gamma^i \alpha_i$. We first claim that if $w \in W$ and $\ell = 1$, then $\gcd w\gamma = 1$. Indeed, one has
+	$$w_j\gamma = \sum_i \gamma^i (\alpha_i - a_{ij} \alpha_j) = \sum_{i \neq j} \gamma^i \alpha_i + (\gamma^j - \sum_i a_{ij} \gamma^i) \alpha_j$$
+	and
+	$$\gamma \sum_{i\neq j} (d_i + d_j a_{ij}) \gamma^i + d_j \left(\gamma^j - \sum_i a_{ij} \gamma^i\right) = \sum_i d_i \gamma^i = \ell.$$
+	Therefore Bezout's theorem implies that $\gcd w\gamma = 1$. From this it follows that if $\gamma \in \Delta$, then $\ell = 1$.
+
+	Since $(\gamma, \gamma) > 0$, there is at most one $\gamma^\flat \in Q$ in the span of $\gamma$ such that $\gamma \in \Delta$. If $\gamma \in \Delta$, then the above argument shows that $c(\gamma) = m(\gamma) = 1$ and $\ell = 1$. Otherwise, since $c(\gamma) > 0$ and $(\gamma, \gamma) > 0$, there is a $\gamma^\flat|\gamma$ with $m(\gamma^\flat) = 1$. Since we then have $\gcd \gamma^\flat = 1$, it follows that $\ell \gamma^\flat = \gamma$, so the claim follows from definition of $c$.
+\end{proof}
+	% TODO: Cite the Bezout's thing.
+Let $\gamma \prec \beta$. It follows from our inductive assumption that if we do not already know the value of $c(\gamma)$, then $(\gamma, \gamma) > 0$, so the lemma gives an easily computed formula for $c(\gamma)$.
+
+
+
+
+
+
+
+
+
+
+
+
 \section{Verification}
-We compare our root multiplicities to those found by \cite{kleinschmidt2004e11}.
+We compared our root multiplicities to the multiplicities of $E_{10}$ and $E_{11}$ given by Kleinschmidt \cite{kleinschmidt2004e11} and the multiplicities of $H_2$ and $H_3$ given by Kac \cite{kac_2014}.
 
 
 \section{Conjectures}
 Let $\beta$ be an imaginary root of $\g$ with height $|\beta|$. One has the trivial estimate
 $$m(\beta) \leq d^{|\beta|}$$
-and we conjecture that this estimate is sharp in the sense that if $\g$ is \emph{any} Kac-Moody algebra of rank $d$ with a nontrivial Tits cone and connected Dynkin diagram, then there is a root $\beta$ such that $m(\beta) = d^{|\beta|}$ (or in the sense that there is a sequence of roots $\beta_n$ such that $m(\beta_n) \sim d^{|\beta_n|}$?) (TODO: Prove it.	)
+and we conjecture that this estimate is sharp in the sense that if $\g$ is \emph{any} Kac-Moody algebra of rank $d$ with a nontrivial Tits cone and connected Dynkin diagram, then there is a root $\beta$ such that $m(\beta) = d^{|\beta|}$ (or in the sense that there is a sequence of roots $\beta_n$ such that $m(\beta_n) \sim d^{|\beta_n|}$?) (TODO: Prove it.)
+
+Moreover, we conjecture that multiplicities grow as
+$$m(\beta) \approx Cd^{\sqrt{-(\beta, \beta)}}.$$
 
 
 

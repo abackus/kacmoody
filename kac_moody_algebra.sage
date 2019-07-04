@@ -90,13 +90,14 @@ class KacMoodyAlgebra():
 		"""
 		Acts the Weyl group representation of the simple root s on the root r r
 		"""
-		return root(r - self.B(r, s) * s)
+		return root(r - self.B(r, s) * s) # Does this still work? TODO
 
 	def pingpong(self, g):
 		"""
 		Adjoin all the roots, that can be obtained
 		by acting the Weyl group on g, up to height
 		"""
+		a = gcd(g.list_form)
 		to_pingpong = [g]
 		mult = self.multiplicities[g]
 		c	= self.cs[g]
@@ -113,23 +114,14 @@ class KacMoodyAlgebra():
 
 	def lookup_coroot_c(self, r):
 		# Look up c of a coroot, where we might not know the answer
-		# Also declares the multiplicity to be 0 and then pingpongs
 		if r in self.cs:
 			return self.cs[r]
 		else:
-			c = 0
-			for d in r.divisors(1):
-				if d[0] in self.roots:
-					# TODO: Find a closed form for this, in terms of the gcd of the entries of r
-					# so we don't have to compute divisors every time.
-					c = c + self.multiplicities[d[0]]/d[1]
-					if c > 0:
-						break
-			print('had to lookup', r, c)
-			#self.multiplicities[r] = 0 # TODO Edit pingpong so we don't have to do this.
-			self.cs[r] = c
-			#self.pingpong(r)
-			return c
+			d = gcd(r.list_form)
+			if root(r/d) in self.roots:
+				self.cs[r] = 1/d
+				return 1/d
+			return 0
 
 
 	def graded_ascent(self):
@@ -144,46 +136,58 @@ class KacMoodyAlgebra():
 				if next_root not in self.fun_chamber:
 					self.fun_chamber.append(next_root)
 		self.fun_chamber = sorted(self.fun_chamber, key=lambda r: r.height)
+		print("Fundamental chamber generated...")
+
+		# FOR TIME TESTING
+		real_root_counter = 0
+		imag_root_counter = 0
 
 		for r in self.fun_chamber:
 			# Now, compute the multiplicity and c-value of r
-			if self.dim == 2: # TODO: Doesn't work if nonsymmetric!
+			#if self.dim == 2 and self.is_symmetric: # TODO: Doesn't work if nonsymmetric!
 				# This is a nice optimization for the 2D symmetric case, wherein we can assume that r[1] < r[2].
-				opposite = root([r.list_form[1], r.list_form[0]])
-				if opposite in self.roots:
-					self.roots.add(r)
-					self.cs[r] = self.cs[opposite]
-					self.multiplicities[r] = self.multiplicities[opposite]
-					self.pingpong(r)
-					continue
+			#	opposite = root([r.list_form[1], r.list_form[0]])
+			#	if opposite in self.roots:
+			#		self.roots.add(r)
+			#		self.cs[r] = self.cs[opposite]
+			#		self.multiplicities[r] = self.multiplicities[opposite]
+			#		self.pingpong(r)
+			#		continue
 			# TODO: Possible optimization -- what if B(r, r) = 0? Does this imply that m(r) = rank(matrix)?
+			# This is NOT the case in general, so when is it?
 			RHS = 0 # right-hand side of the Peterson formula
 			subroots = [s for s in self.roots if s < r] # could this be sped up?
 			for s in subroots:
-				# TODO: Optimization: Multiplication by 2
-				norm = self.B(s, s)
 				coroot = root(r - s)
-				if not self.zero_root < coroot:
-					continue
+				norm = self.B(s, s)
+
 				if norm > 0:
 					# Real subroots
 					pairing = self.B(s, r)
 					current_sum = 0
 					for n in range(1, floor(r.height/s.height) + 1):
-						# TODO: There's probably a way to find the closed form of n_coroot
-						# and not have to do this loop.
 						n_coroot = root(r - n * s)
 						if not self.zero_root < n_coroot:
 							break
-						current_sum = current_sum + (pairing - n * norm) * self.lookup_coroot_c(n_coroot)
+						two_factor = n_coroot.height - (n * s.height)
+						if two_factor < 0:
+							continue
+						current_sum = current_sum + (pairing - n * norm) * self.lookup_coroot_c(n_coroot) * (2 - (two_factor == 0))
+						real_root_counter += 1
 					RHS = RHS + self.multiplicities[s] * current_sum
 				elif self.lookup_coroot_c(coroot) > 0:
 					# Imaginary subroots
-					RHS = RHS +	self.cs[s] * self.cs[coroot] * self.B(s, coroot)
-			self.cs[r] = RHS/(self.B(r, r) - 2 * r.height)
+					two_factor = coroot.height - s.height
+					if two_factor < 0:
+						continue
+					RHS = RHS +	self.cs[s] * self.cs[coroot] * self.B(s, coroot) * (2 - (two_factor == 0))
+					imag_root_counter += 1
+			
+			self.cs[r] = RHS/(self.B(r, r) - 2 * r.height) # Does this still work??
 			self.multiplicities[r] = self.cs[r] - sum([self.multiplicities[d[0]]/d[1] for d in r.divisors(2)])
 			self.roots.add(r)
 			self.pingpong(r)
+		print(real_root_counter, imag_root_counter)
 		print("Generated all imaginary roots...")
 
 	def print_to_file(self, filename):
@@ -192,9 +196,9 @@ class KacMoodyAlgebra():
 		with open(filename + '.tsv', 'w') as f:
 			for r in self.fun_chamber:
 				f.write(str(r) + '	' + str(r.height) + '	' + str(self.B(r, r)) + '	' + str(self.multiplicities[r]) + '	' + str(self.cs[r]) + '\n')
-		with open(filename + '_raw.tsv', 'w') as f:
-			for r in self.roots:
-				f.write(str(r) + '	' + str(r.height) + '	' + str(self.B(r, r)) + '	' + str(self.multiplicities[r]) + '	' + str(self.cs[r]) + '\n')
+		#with open(filename + '_raw.tsv', 'w') as f:
+		#	for r in self.roots:
+		#		f.write(str(r) + '	' + str(r.height) + '	' + str(self.B(r, r)) + '	' + str(self.multiplicities[r]) + '	' + str(self.cs[r]) + '\n')
 
 
 def exceptional(n):

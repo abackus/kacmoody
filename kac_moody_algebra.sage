@@ -8,13 +8,13 @@ def sub_parts(c):
 				   [0,2,0],
 				   [1,2,0]]
 	"""
-	if len(c) == 1:
+	l = len(c)
+	if l == 0:
+		return []
+	elif l == 1:
 		return [[x] for x in range(c[0])]
-
-	if c[0] == 0:
+	elif c[0] == 0:
 		return [[0] + y for y in sub_parts(c[1:])]
-
-	d = sub_parts(c[1:])
 	g = sub_parts([c[0]-1]+c[1:])+[[c[0]]+y for y in sub_parts(c[1:])]+[[c[0]-1]+c[1:]]
 	return g+[c]
 
@@ -57,9 +57,13 @@ class KacMoodyAlgebra():
 	"""
 	def __init__(self, matrix, height=30):
 		#Setup
-		self.matrix = CartanMatrix(matrix)
+		matrix = CartanMatrix(matrix)
+		self.matrix = matrix.symmetrized_matrix()
+		self.symmetrizer = list(matrix.symmetrizer())
 		self.height = height
 		self.dim = self.matrix.nrows()
+		self.is_symmetric = (self.symmetrizer == [1] * self.dim)
+
 		self.simple_roots = [root(tuple([int(a == b) for a in range(self.dim)])) for b in range(self.dim)]
 		self.roots = set(self.simple_roots)
 		self.multiplicities = dict()
@@ -86,11 +90,12 @@ class KacMoodyAlgebra():
 		"""
 		return a * self.matrix * b
 
-	def weyl(self, r, s):
+	def weyl(self, r, i):
 		"""
-		Acts the Weyl group representation of the simple root s on the root r r
+		Acts the ith fun reflection on r
 		"""
-		return root(r - self.B(r, s) * s) # Does this still work? TODO
+		s = self.simple_roots[i]
+		return root(r - 1/self.symmetrizer[i] * self.B(r, s) * s) # Does this still work? TODO
 
 	def pingpong(self, g):
 		"""
@@ -103,7 +108,7 @@ class KacMoodyAlgebra():
 		c	= self.cs[g]
 		while len(to_pingpong) != 0:
 			next_root	= to_pingpong.pop()
-			ponged	   = [self.weyl(next_root, s) for s in self.simple_roots]
+			ponged	   = [self.weyl(next_root, i) for i in range(self.dim)]
 			qonged	   = [p for p in ponged if p.height <= self.height and self.zero_root <= p]
 			for p in qonged:
 				if p not in self.roots:
@@ -144,17 +149,16 @@ class KacMoodyAlgebra():
 
 		for r in self.fun_chamber:
 			# Now, compute the multiplicity and c-value of r
-			#if self.dim == 2 and self.is_symmetric: # TODO: Doesn't work if nonsymmetric!
+			if self.dim == 2 and self.is_symmetric: # TODO: Doesn't work if nonsymmetric!
 				# This is a nice optimization for the 2D symmetric case, wherein we can assume that r[1] < r[2].
-			#	opposite = root([r.list_form[1], r.list_form[0]])
-			#	if opposite in self.roots:
-			#		self.roots.add(r)
-			#		self.cs[r] = self.cs[opposite]
-			#		self.multiplicities[r] = self.multiplicities[opposite]
-			#		self.pingpong(r)
-			#		continue
-			# TODO: Possible optimization -- what if B(r, r) = 0? Does this imply that m(r) = rank(matrix)?
-			# This is NOT the case in general, so when is it?
+				opposite = root([r.list_form[1], r.list_form[0]])
+				if opposite in self.roots:
+					self.roots.add(r)
+					self.cs[r] = self.cs[opposite]
+					self.multiplicities[r] = self.multiplicities[opposite]
+					self.pingpong(r)
+					continue
+			# TODO: When does B(r,r)==0 imply m(r) = rank(A)?
 			RHS = 0 # right-hand side of the Peterson formula
 			subroots = [s for s in self.roots if s < r] # could this be sped up?
 			for s in subroots:
@@ -190,19 +194,23 @@ class KacMoodyAlgebra():
 		print(real_root_counter, imag_root_counter)
 		print("Generated all imaginary roots...")
 
-	def print_to_file(self, filename):
+	def print_to_file(self, filename, raw_data=False):
 		# Prints fundamental chamber to filename.tsv, and
 		# all roots to filename_raw.tsv
 		with open(filename + '.tsv', 'w') as f:
 			for r in self.fun_chamber:
 				f.write(str(r) + '	' + str(r.height) + '	' + str(self.B(r, r)) + '	' + str(self.multiplicities[r]) + '	' + str(self.cs[r]) + '\n')
-		#with open(filename + '_raw.tsv', 'w') as f:
-		#	for r in self.roots:
-		#		f.write(str(r) + '	' + str(r.height) + '	' + str(self.B(r, r)) + '	' + str(self.multiplicities[r]) + '	' + str(self.cs[r]) + '\n')
+		if raw_data:
+			with open(filename + '_raw.tsv', 'w') as f:
+				for r in self.roots:
+					f.write(str(r) + '	' + str(r.height) + '	' + str(self.B(r, r)) + '	' + str(self.multiplicities[r]) + '	' + str(self.cs[r]) + '\n')
 
 
 def exceptional(n):
 	# Returns the exceptional Cartan matrix E_n, for n >= 5
+	# This is a simple Lie algebra for n <= 8,
+	# an affine Lie algebra for n = 9, a hyperbolic Kac-Moody algebra for n = 10,
+	# and a properly indefinite Kac-Moody algebra for n >= 11.
 	if n < 5:
 		raise ValueError("Matrix E_n only makes sense for n >= 5")
 	M = []
